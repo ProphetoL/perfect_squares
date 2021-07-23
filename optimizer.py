@@ -87,6 +87,21 @@ def improve_square(M, loss, lrn):
     
     return new_M, new_loss
 
+def print_perfects(perfects):
+    perfects_log = open('perfects.log', 'a')
+    for p in perfects:
+        print(p, '\n')
+        perfects_log.write(str(p))
+        perfects_log.write('\n \n')
+    perfects_log.close()
+
+def print_plots(perfect_losses):
+    for p_loss in perfect_losses:
+        plt.plot(p_loss)
+        plt.savefig(f"perfect_loss_graphs\\perfect_loss_{int(time())}.png")
+    
+    
+    
 extend = 20
 #range for the initial matrix
 ORDER = 3
@@ -150,7 +165,7 @@ for i_gen in tqdm(range(generations)):
     #Check for perfection
     if min_loss == 0:
         perfects.append(Ms[min_arg])
-        perfect_losses.append(loss)
+        perfect_losses.append(losses)
     
     running_best_loss.append(overall_best_loss)
 
@@ -165,12 +180,6 @@ print('\n Overall Best Square: \n', overall_best_M,
       '\n \n Perfects: \n')
 
 loss_improvement_file.close()
-f = open('perfects.log', 'a')
-for n in perfects:
-    print(n, '\n')
-    f.write(str(n))
-    f.write('\n \n')
-f.close()
 
-plt.plot(perfect_losses[0])
-plt.savefig("graph.png")
+print_perfects(perfects)
+print_plots(perfect_losses)
