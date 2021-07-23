@@ -65,27 +65,36 @@ def Optizer(M, old_loss, lrn, Opti_step):
 #@njit()   
 def improve_square(M, loss, lrn):
     """function to modify the square"""
+    
+    #select random number
     global loss_improvement_file
     i, j = randint(0, ORDER-1, (2), np.int_)
+    choose_bad = np.random.random() <= lrn
 
     change_factor = None
     while change_factor == 0 or change_factor is None:
         change_factor = randint(1, Opti_step+1)
     
-    new_M = M.copy()
+    large_M = M.copy()
+    small_M = M.copy()
 
     #change selected number
-    new_M[i,j] += change_factor
-    new_loss = loss_func(new_M)[0]
+    large_M[i,j] += change_factor
+    small_M[i,j] -= change_factor
     
-    if not(new_loss < loss or np.random.random() <= lrn):
-
-        new_M = M.copy()
-        new_M[i,j] -= change_factor
-        new_loss = loss_func(new_M)[0]
-
+    #calculate losses of steps
+    large_loss = loss_func(large_M)[0]
+    small_loss = loss_func(small_M)[0]
     
-    return new_M, new_loss
+    if large_loss > small_loss:
+        if choose_bad:
+            return large_M, large_loss
+        return small_M, small_loss
+    else:
+        if choose_bad:
+            return small_M, small_loss
+        return large_M, large_loss
+
 
 def print_perfects(perfects):
     perfects_log = open('perfects.log', 'a')
@@ -111,7 +120,7 @@ square_TYPE = np.int
 
 Opti_step = 1
 #step taked by the optymizer
-lrn = 0
+lrn = 0.1
 #probapility to keep a bad square
 
 nb_step = 250
@@ -141,7 +150,7 @@ for i_gen in tqdm(range(generations)):
 
     #Optimization loop
     i_step = 0
-    while i_step <nb_step and loss >= 0:#to stop when a perfect squred is find
+    while i_step < nb_step:#to stop when a perfect squred is find
         losses.append(loss)
         Ms.append(M.copy())
         
@@ -149,35 +158,17 @@ for i_gen in tqdm(range(generations)):
         M, loss = Optizer(M, loss, lrn, Opti_step)
         
         loss_improvement_file.write(f"{loss}, {loss < losses[-1]}\n")
-
+        
+        if loss == 0:
+            perfects.append(M.copy())
+            perfect_losses.append(losses)
+            break
+        
         i_step += 1
 
-    
-    #Find best of generation
-    min_arg = np.argmin(losses)
-    min_loss = loss_func(Ms[min_arg])[0]
-    
-    #Check if overall best
-    if min_loss < overall_best_loss:
-        overall_best_loss = loss_func(Ms[min_arg])[0]
-        overall_best_M = Ms[min_arg]
-        
-    #Check for perfection
-    if min_loss == 0:
-        perfects.append(Ms[min_arg])
-        perfect_losses.append(losses)
-    
-    running_best_loss.append(overall_best_loss)
-
-
-    """print('\n Best Square: \n',Ms[min_arg], '\n Best sd / mean: ',
-          np.round(loss_func(Ms[min_arg]),2), '\n Avg Loss: ', np.mean(losses),
-          '\n Iteration: ', min_arg)"""
 
 #Analytics
-print('\n Overall Best Square: \n', overall_best_M,
-      '\n Overall Best Loss: ', overall_best_loss,
-      '\n \n Perfects: \n')
+print('\n \n Perfects: \n')
 
 loss_improvement_file.close()
 
