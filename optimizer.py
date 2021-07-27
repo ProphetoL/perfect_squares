@@ -61,7 +61,37 @@ def Optizer(M, old_loss, lrn, Opti_step):
 
     return new_M, new_loss
 
+# old algo
+#@njit()   
+# def improve_square(M, loss, lrn):
+#     """function to modify the square"""
+#     global loss_improvement_file
+#     i, j = randint(0, ORDER-1, (2), np.int_)
+#     choose_bad = np.random.random() <= lrn
 
+#     change_factor = None
+#     while change_factor == 0 or change_factor is None:
+#         change_factor = randint(1, Opti_step+1)
+    
+#     large_M = M.copy()
+#     small_M = M.copy()
+
+#     #change selected number
+#     large_M[i,j] += change_factor
+#     small_M[i,j] -= change_factor
+#     large_loss = loss_func(large_M)[0]
+#     small_loss = loss_func(small_M)[0]
+    
+#     if large_loss > loss:
+#         if choose_bad:
+#             return large_M, large_loss
+#         return small_M, small_loss
+#     else:
+#         if choose_bad:
+#             return small_M, small_loss
+#         return large_M, large_loss
+
+# new algo
 #@njit()   
 def improve_square(M, loss, lrn):
     """function to modify the square"""
@@ -86,14 +116,22 @@ def improve_square(M, loss, lrn):
     large_loss = loss_func(large_M)[0]
     small_loss = loss_func(small_M)[0]
     
-    if large_loss > small_loss:
-        if choose_bad:
+    if choose_bad:
+        worst_loss = np.max([large_loss, small_loss])
+        
+        if worst_loss == large_loss:
             return large_M, large_loss
-        return small_M, small_loss
-    else:
-        if choose_bad:
+        else:
             return small_M, small_loss
-        return large_M, large_loss
+    else:
+        best_loss = np.min([large_loss, small_loss])
+        
+        if best_loss == large_loss:
+            return large_M, large_loss
+        else:
+            return small_M, small_loss
+            
+            
 
 
 def print_perfects(perfects):
@@ -120,7 +158,7 @@ square_TYPE = np.int
 
 Opti_step = 1
 #step taked by the optymizer
-lrn = 0.1
+lrn = 0.3
 #probapility to keep a bad square
 
 nb_step = 250
