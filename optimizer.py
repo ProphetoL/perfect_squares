@@ -39,7 +39,7 @@ def loss_func(M):
     global ORDER
     
     indexes = np.array([ORDER, ORDER, 2])
-    Sums = np.zeros((np.sum(indexes)), dtype=np.int_)
+    Sums = np.zeros((np.sum(indexes)), dtype=np.int64)
     
     #compute all the sums
     for i_t in range(len(indexes)):
@@ -48,11 +48,11 @@ def loss_func(M):
         for i in range(t):
             Sums[i + i_t*ORDER] = np.sum(getPart(M, i, i_t))
     
-    return np.std(Sums), np.mean(Sums)
+    return np.std(Sums)
 
   
 
-#@njit()
+@njit()
 def Optizer(M, old_loss, lrn, Opti_step):
     """function to make a step of optimaziation"""
     global ORDER
@@ -62,27 +62,26 @@ def Optizer(M, old_loss, lrn, Opti_step):
     return new_M, new_loss
 
 
-#@njit()   
+@njit()   
 def improve_square(M, loss, lrn):
     """function to modify the square"""
-    global loss_improvement_file
-    i, j = randint(0, ORDER-1, (2), np.int_)
+    i, j = [np.int64(randint(0, ORDER-1)) for i in range(2)]
 
-    change_factor = None
-    while change_factor == 0 or change_factor is None:
-        change_factor = randint(1, Opti_step+1)
+    change_factor = 0
+    while change_factor == 0 :
+        change_factor = randint(-Opti_step, Opti_step+1)
     
     new_M = M.copy()
 
     #change selected number
     new_M[i,j] += change_factor
-    new_loss = loss_func(new_M)[0]
+    new_loss = loss_func(new_M)
     
     if not(new_loss < loss or np.random.random() <= lrn):
 
         new_M = M.copy()
         new_M[i,j] -= change_factor
-        new_loss = loss_func(new_M)[0]
+        new_loss = loss_func(new_M)
 
     
     return new_M, new_loss
@@ -102,30 +101,36 @@ def print_plots(perfect_losses):
     
     
     
-extend = 20
+extend = 1000
 #range for the initial matrix
 ORDER = 3
 #order of the square
-square_TYPE = np.int
+square_TYPE = np.int64
 #type of the value in the square
 
-Opti_step = 1
+Opti_step = 10
 #step taked by the optymizer
-lrn = 0
-#probapility to keep a bad square
+Opti_step_init = Opti_step
 
-nb_step = 250
-generations = 5000
+lrn = 0.5
+#probapility to keep a bad square
+lrn_init = lrn
+
+nb_step = 2000
+generations = 200#int(1E6)
 
 overall_best_M = randint(-extend, extend, (ORDER, ORDER),square_TYPE)
-overall_best_loss = loss_func(overall_best_M)[0]
+overall_best_loss = loss_func(overall_best_M)
 
 perfects = []
+nb_perfects = 0
 running_best_loss = []
+running_best_loss_change = []
+best_loss_i = []
 perfect_losses = []
 
-loss_improvement_file = open(f"losses\\loss_improve_{int(time())}.log", "a")
-#file to log if the squre improve
+"""loss_improvement_file = open(f"losses\\loss_improve_{int(time())}.log", "a")
+#file to log if the squre improve"""
 for i_gen in tqdm(range(generations)):
     
     #Create initial square
@@ -133,11 +138,12 @@ for i_gen in tqdm(range(generations)):
     
     #Arrays to store squares and losses
     losses = []
-    loss = loss_func(M)[0]
+    loss = loss_func(M)
     Ms = []
+    Opti_step = Opti_step_init
+    lrn = lrn_init
     
-    
-    loss_improvement_file.write(f"next gen\n{i_gen}\n{loss}\n")
+    #loss_improvement_file.write(f"next gen\n{i_gen}\n{loss}\n")
 
     #Optimization loop
     i_step = 0
@@ -146,40 +152,82 @@ for i_gen in tqdm(range(generations)):
         Ms.append(M.copy())
         
         #Optimize
+
         M, loss = Optizer(M, loss, lrn, Opti_step)
         
-        loss_improvement_file.write(f"{loss}, {loss < losses[-1]}\n")
+        #smart Opti_step and lrn
+        h = 200
+        if loss < h and not losses[-1] < h:
+            Opti_step = 1
+            lrn = 0.05
+
+        #loss_improvement_file.write(f"{loss}, {loss < losses[-1]}\n")
 
         i_step += 1
 
-    
     #Find best of generation
     min_arg = np.argmin(losses)
-    min_loss = loss_func(Ms[min_arg])[0]
-    
+    min_loss = loss_func(Ms[min_arg])
+
+    #print(min_loss)
+    if loss < h:
+        running_best_loss_change.append(min_loss)
+    else :
+        running_best_loss.append(min_loss)
+    best_loss_i.append(min_arg)
+
+
     #Check if overall best
     if min_loss < overall_best_loss:
-        overall_best_loss = loss_func(Ms[min_arg])[0]
+        overall_best_loss = loss_func(Ms[min_arg])
         overall_best_M = Ms[min_arg]
         
     #Check for perfection
     if min_loss == 0:
+        print("\nPerfect !")
         perfects.append(Ms[min_arg])
         perfect_losses.append(losses)
+        nb_perfects += 1
     
-    running_best_loss.append(overall_best_loss)
+
+    #Save the perfects
+    if i_gen% 1000 == 0 and not len(perfects) == 0:
+        for i in range(len(perfects)):
+            perfects[i] = perfects[i].tolist()
+
+        #Read json
+        f = open('perfects.json', 'r')
+        f_json  = json.loads(f.read())
+        f.close()
+
+        #Write Json
+        f = open('perfects.json', 'w')
+        json.dump(f_json + perfects, f , indent=4)
+        f.close()
+
+        #print(f"\n{len(perfects)} squares saved !")
+        
+        plt.plot(losses)
+        plt.savefig(f"{extend}_{Opti_step_init}-{int(time())}.png")
+        perfects = []
 
 
-    """print('\n Best Square: \n',Ms[min_arg], '\n Best sd / mean: ',
-          np.round(loss_func(Ms[min_arg]),2), '\n Avg Loss: ', np.mean(losses),
-          '\n Iteration: ', min_arg)"""
+#loss_improvement_file.close()
+
+strd_loss, mean_loss  = np.std(running_best_loss), np.mean(running_best_loss)
 
 #Analytics
 print('\n Overall Best Square: \n', overall_best_M,
       '\n Overall Best Loss: ', overall_best_loss,
-      '\n \n Perfects: \n')
+      '\n \nNumber of Perfects: ',nb_perfects,
+      '\n\n mean of index of best losses :', np.mean(best_loss_i),
+      '\n mean of best losses :', mean_loss, 
+      '\n mean after change', np.mean(running_best_loss_change)
+      )
 
 loss_improvement_file.close()
 
 print_perfects(perfects)
 print_plots(perfect_losses)
+
+
