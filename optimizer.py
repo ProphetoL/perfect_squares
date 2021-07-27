@@ -157,9 +157,6 @@ for i_gen in tqdm(range(generations)):
     #print(min_loss)
     if loss < h:
         running_best_loss_change.append(min_loss)
-        plt.plot(losses)
-        plt.yscale("log")
-        plt.show()
     else :
         running_best_loss.append(min_loss)
     best_loss_i.append(min_arg)
