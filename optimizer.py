@@ -117,16 +117,12 @@ def improve_square(M, loss, lrn):
     small_loss = loss_func(small_M)[0]
     
     if choose_bad:
-        worst_loss = np.max([large_loss, small_loss])
-        
-        if worst_loss == large_loss:
+        if large_loss > small_loss:
             return large_M, large_loss
         else:
             return small_M, small_loss
     else:
-        best_loss = np.min([large_loss, small_loss])
-        
-        if best_loss == large_loss:
+        if large_loss < small_loss:
             return large_M, large_loss
         else:
             return small_M, small_loss
