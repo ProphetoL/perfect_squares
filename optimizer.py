@@ -212,7 +212,6 @@ for i_gen in tqdm(range(generations)):
         perfects = []
 
 
-#loss_improvement_file.close()
 
 strd_loss, mean_loss  = np.std(running_best_loss), np.mean(running_best_loss)
 
@@ -229,5 +228,4 @@ loss_improvement_file.close()
 
 print_perfects(perfects)
 print_plots(perfect_losses)
-
 
